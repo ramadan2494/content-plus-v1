@@ -38,74 +38,163 @@ export class SearchService {
     searchType: SearchType,
     request: SearchRequest
   ): Promise<SearchResponse> {
-    const response = await apiClient.post<{ results: SearchResult[]; total: number }>(
-      `${this.SEARCH_BASE}/${searchType}`,
-      {
-        query: request.query,
-        filters: request.filters,
+    try {
+      const response = await apiClient.post<any>(
+        `${this.SEARCH_BASE}/${searchType}`,
+        {
+          query: request.query,
+          filters: request.filters,
+          page: request.page || 1,
+          pageSize: request.pageSize || 10,
+          sortBy: request.sortBy,
+          sortOrder: request.sortOrder,
+        }
+      );
+
+      console.log('Standard Search API Response:', response?.data);
+
+      const page = request.page || 1;
+      const pageSize = request.pageSize || 10;
+
+      // Handle different API response formats
+      let results: SearchResult[] = [];
+      let total = 0;
+
+      // Check if response and response.data exist
+      if (!response || !response.data) {
+        console.warn('Empty or invalid API response:', response);
+        return {
+          results: [],
+          total: 0,
+          page,
+          pageSize,
+          hasMore: false,
+        };
+      }
+
+      // Format 1: { results: [...], total: number }
+      if (response.data?.results && Array.isArray(response.data.results)) {
+        results = response.data.results;
+        total = response.data.total || response.data.results.length;
+      }
+      // Format 2: { totalRecords: number, instances: [...] }
+      else if (response.data?.instances && Array.isArray(response.data.instances)) {
+        results = response.data.instances;
+        total = response.data.totalRecords || response.data.instances.length;
+      }
+      // Format 3: Data wrapped in data property
+      else if (response.data?.data?.results && Array.isArray(response.data.data.results)) {
+        results = response.data.data.results;
+        total = response.data.data.total || response.data.data.results.length;
+      }
+      // Format 4: Direct array response
+      else if (Array.isArray(response.data)) {
+        results = response.data;
+        total = response.data.length;
+      }
+      // Format 5: { data: [...] } (array wrapped in data)
+      else if (Array.isArray(response.data?.data)) {
+        results = response.data.data;
+        total = response.data.data.length;
+      }
+      // Format 6: Empty response or unexpected format
+      else {
+        console.warn('Unexpected API response format:', response.data);
+        results = [];
+        total = 0;
+      }
+
+      return {
+        results,
+        total,
+        page,
+        pageSize,
+        hasMore: page * pageSize < total,
+      };
+    } catch (error) {
+      console.error('Error in standardSearch:', error);
+      // Return empty results instead of throwing
+      return {
+        results: [],
+        total: 0,
         page: request.page || 1,
         pageSize: request.pageSize || 10,
-        sortBy: request.sortBy,
-        sortOrder: request.sortOrder,
-      }
-    );
-
-    const { results, total } = response.data;
-    const page = request.page || 1;
-    const pageSize = request.pageSize || 10;
-
-    return {
-      results,
-      total,
-      page,
-      pageSize,
-      hasMore: page * pageSize < total,
-    };
+        hasMore: false,
+      };
+    }
   }
 
   /**
    * Perform RAG search - returns AI-generated answer with sources
    */
   private static async ragSearch(request: SearchRequest): Promise<RAGResponse> {
-    const response = await apiClient.post<RAGResponse>(`${this.SEARCH_BASE}/rag`, {
-      query: request.query,
-    });
+    try {
+      const response = await apiClient.post<RAGResponse>(`${this.SEARCH_BASE}/rag`, {
+        query: request.query,
+      });
 
-    return response.data;
+      if (!response || !response.data) {
+        console.warn('Empty or invalid RAG API response:', response);
+        return {
+          totalRecords: 0,
+          instances: [],
+        };
+      }
+
+      return response.data;
+    } catch (error) {
+      console.error('Error in ragSearch:', error);
+      // Return empty RAG response instead of throwing
+      return {
+        totalRecords: 0,
+        instances: [],
+      };
+    }
   }
 
   /**
    * Get document details by ID using filters endpoint
    */
   static async getDocumentById(documentId: string): Promise<any> {
-    const response = await apiClient.post<any>(`${this.SEARCH_BASE}/filters`, {
-      field: 'documentId',
-      value: documentId,
-    });
+    try {
+      const response = await apiClient.post<any>(`${this.SEARCH_BASE}/filters`, {
+        field: 'documentId',
+        value: documentId,
+      });
 
-    console.log('Document API Response:', response.data);
+      console.log('Document API Response:', response?.data);
 
-    // Handle the response format: { totalRecords: 1, instances: [...] }
-    if (response.data?.instances && Array.isArray(response.data.instances)) {
-      return response.data.instances[0] || {};
+      if (!response || !response.data) {
+        console.warn('Empty or invalid document API response:', response);
+        return {};
+      }
+
+      // Handle the response format: { totalRecords: 1, instances: [...] }
+      if (response.data?.instances && Array.isArray(response.data.instances)) {
+        return response.data.instances[0] || {};
+      }
+
+      // Handle if data is wrapped in a data property
+      if (response.data?.data?.instances && Array.isArray(response.data.data.instances)) {
+        return response.data.data.instances[0] || {};
+      }
+      
+      // Or it might be an array directly
+      if (Array.isArray(response.data)) {
+        return response.data[0] || response.data;
+      }
+
+      // Or it might have results property
+      if (response.data?.results && Array.isArray(response.data.results)) {
+        return response.data.results[0] || response.data;
+      }
+
+      // Otherwise return as is
+      return response.data;
+    } catch (error) {
+      console.error('Error in getDocumentById:', error);
+      // Return empty object instead of throwing
+      return {};
     }
-
-    // Handle if data is wrapped in a data property
-    if (response.data?.data?.instances && Array.isArray(response.data.data.instances)) {
-      return response.data.data.instances[0] || {};
-    }
-    
-    // Or it might be an array directly
-    if (Array.isArray(response.data)) {
-      return response.data[0] || response.data;
-    }
-
-    // Or it might have results property
-    if (response.data?.results && Array.isArray(response.data.results)) {
-      return response.data.results[0] || response.data;
-    }
-
-    // Otherwise return as is
-    return response.data;
   }
 }

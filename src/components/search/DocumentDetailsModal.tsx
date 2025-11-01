@@ -5,7 +5,9 @@ import { useEffect, useState } from 'react';
 import { SearchService } from '@/services';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
 import { formatDate } from '@/lib/utils';
-import { ExternalLink, Copy, BookOpen, Calendar, Database, Globe, FileText, Tag } from 'lucide-react';
+import { ExternalLink, Copy, BookOpen, Calendar, Database, Globe, FileText, Tag, TrendingUp, Building2, Link2, Users, Award, BarChart3, Download, ExternalLinkIcon } from 'lucide-react';
+import { AcademicMetadata, OpenAlexMetadata, SciSpaceMetadata } from '@/types';
+import { CitationGenerator } from './CitationGenerator';
 
 interface DocumentDetailsModalProps {
   documentId: string;
@@ -14,7 +16,7 @@ interface DocumentDetailsModalProps {
 
 interface DocumentDetails {
   title?: string;
-  authors?: Array<{ name: string }>;
+  authors?: Array<{ name: string } | string>;
   abstract?: string;
   year?: number;
   datePublished?: string;
@@ -27,6 +29,13 @@ interface DocumentDetails {
   subjects?: string[];
   identifiers?: Array<{ type: string; id: string }>;
   coreId?: string;
+  citations?: number;
+  venue?: string;
+  journal?: string;
+  academicMetadata?: AcademicMetadata;
+  openAccess?: boolean;
+  pdfUrl?: string;
+  keywords?: string[];
   [key: string]: any;
 }
 
@@ -59,6 +68,11 @@ export const DocumentDetailsModal: React.FC<DocumentDetailsModalProps> = ({
 
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text);
+  };
+
+  // Helper to get author name
+  const getAuthorName = (author: { name: string } | string): string => {
+    return typeof author === 'string' ? author : author.name;
   };
 
   return (
@@ -126,7 +140,7 @@ export const DocumentDetailsModal: React.FC<DocumentDetailsModalProps> = ({
                       Authors
                     </h4>
                     <p className="text-gray-600 dark:text-gray-400">
-                      {document.authors.map((author) => author.name).join(', ')}
+                      {document.authors.map(getAuthorName).join(', ')}
                     </p>
                   </div>
                 </div>
@@ -333,6 +347,44 @@ export const DocumentDetailsModal: React.FC<DocumentDetailsModalProps> = ({
                 </div>
               )}
 
+              {/* OpenAlex Metadata */}
+              {document.academicMetadata?.openAlex && (
+                <OpenAlexSection metadata={document.academicMetadata.openAlex} />
+              )}
+
+              {/* SciSpace Metadata */}
+              {document.academicMetadata?.sciSpace && (
+                <SciSpaceSection metadata={document.academicMetadata.sciSpace} />
+              )}
+
+              {/* Citation Generator */}
+              <div className="border-t border-gray-200 dark:border-gray-700 pt-6">
+                <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-4">
+                  Generate Citation
+                </h4>
+                <CitationGenerator 
+                  result={{
+                    id: document.coreId || documentId,
+                    documentId: documentId,
+                    title: document.title || '',
+                    authors: Array.isArray(document.authors) 
+                      ? document.authors.map(a => typeof a === 'string' ? a : a.name)
+                      : [],
+                    abstract: document.abstract || '',
+                    content: document.abstract || '',
+                    category: '',
+                    database: document.database?.[0] || '',
+                    publicationDate: document.datePublished || '',
+                    citations: document.citations,
+                    url: document.downloadUrl || '',
+                    score: 1,
+                    year: document.year,
+                    venue: document.venue || document.journal,
+                    doi: document.doi,
+                  }}
+                />
+              </div>
+
               {/* Core ID */}
               {document.coreId && (
                 <div className="text-xs text-gray-500 dark:text-gray-500">
@@ -353,6 +405,270 @@ export const DocumentDetailsModal: React.FC<DocumentDetailsModalProps> = ({
           </button>
         </div>
       </div>
+    </div>
+  );
+};
+
+// OpenAlex Metadata Section Component
+const OpenAlexSection: React.FC<{ metadata: OpenAlexMetadata }> = ({ metadata }) => {
+  return (
+    <div className="bg-blue-50 dark:bg-blue-900/10 border border-blue-200 dark:border-blue-800 rounded-lg p-6 space-y-4">
+      <div className="flex items-center gap-2 mb-4">
+        <BarChart3 className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+        <h4 className="text-lg font-semibold text-gray-900 dark:text-white">
+          OpenAlex Metadata
+        </h4>
+      </div>
+
+      {/* Citation Count */}
+      {(metadata.citationCount || metadata.publicMetrics?.citationCount) && (
+        <div className="flex items-center gap-3">
+          <TrendingUp className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+          <div>
+            <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+              Citations: 
+            </span>
+            <span className="ml-2 text-lg font-bold text-blue-600 dark:text-blue-400">
+              {(metadata.citationCount || metadata.publicMetrics?.citationCount || 0).toLocaleString()}
+            </span>
+          </div>
+        </div>
+      )}
+
+      {/* Open Access Status */}
+      {metadata.openAccess && (
+        <div className="flex items-center gap-3">
+          <div className={`inline-flex items-center gap-2 px-3 py-1 rounded-full text-sm font-medium ${
+            metadata.openAccess.isOpenAccess
+              ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300'
+              : 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300'
+          }`}>
+            {metadata.openAccess.isOpenAccess ? '✓ Open Access' : 'Restricted Access'}
+          </div>
+          {metadata.openAccess.oaUrl && (
+            <a
+              href={metadata.openAccess.oaUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-blue-600 dark:text-blue-400 hover:underline text-sm flex items-center gap-1"
+            >
+              <ExternalLink className="h-4 w-4" />
+              View Open Access Version
+            </a>
+          )}
+        </div>
+      )}
+
+      {/* Concepts/Topics */}
+      {metadata.concepts && metadata.concepts.length > 0 && (
+        <div>
+          <h5 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+            Research Concepts
+          </h5>
+          <div className="flex flex-wrap gap-2">
+            {metadata.concepts.slice(0, 10).map((concept, idx) => (
+              <span
+                key={idx}
+                className="px-3 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded-full text-xs font-medium"
+                title={`Score: ${concept.score.toFixed(2)}`}
+              >
+                {concept.displayName}
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Authorships with Institutions */}
+      {metadata.authorships && metadata.authorships.length > 0 && (
+        <div>
+          <h5 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2 flex items-center gap-2">
+            <Users className="h-4 w-4" />
+            Authors & Institutions
+          </h5>
+          <div className="space-y-2">
+            {metadata.authorships.slice(0, 5).map((authorship, idx) => (
+              <div key={idx} className="text-sm">
+                <span className="font-medium text-gray-900 dark:text-white">
+                  {authorship.author.displayName}
+                </span>
+                {authorship.institutions && authorship.institutions.length > 0 && (
+                  <span className="text-gray-600 dark:text-gray-400 ml-2">
+                    ({authorship.institutions.map(i => i.displayName).join(', ')})
+                  </span>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Venues */}
+      {metadata.venues && metadata.venues.length > 0 && (
+        <div>
+          <h5 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2 flex items-center gap-2">
+            <Building2 className="h-4 w-4" />
+            Venues
+          </h5>
+          <div className="space-y-2">
+            {metadata.venues.map((venue, idx) => (
+              <div key={idx} className="text-sm text-gray-700 dark:text-gray-300">
+                <span className="font-medium">{venue.displayName}</span>
+                {venue.type && (
+                  <span className="ml-2 text-gray-500 dark:text-gray-400">({venue.type})</span>
+                )}
+                {venue.publisher && (
+                  <span className="ml-2 text-gray-500 dark:text-gray-400">- {venue.publisher}</span>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* PDF URLs */}
+      {(metadata.primaryLocation?.pdfUrl || metadata.locations?.some(l => l.pdfUrl)) && (
+        <div>
+          <h5 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2 flex items-center gap-2">
+            <Download className="h-4 w-4" />
+            PDF Downloads
+          </h5>
+          <div className="space-y-2">
+            {metadata.primaryLocation?.pdfUrl && (
+              <a
+                href={metadata.primaryLocation.pdfUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-blue-600 dark:text-blue-400 hover:underline text-sm flex items-center gap-1"
+              >
+                <ExternalLink className="h-4 w-4" />
+                Primary Location PDF
+              </a>
+            )}
+            {metadata.locations?.filter(l => l.pdfUrl).map((location, idx) => (
+              <a
+                key={idx}
+                href={location.pdfUrl!}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-blue-600 dark:text-blue-400 hover:underline text-sm flex items-center gap-1 block"
+              >
+                <ExternalLink className="h-4 w-4" />
+                {location.source?.displayName || `PDF ${idx + 1}`}
+              </a>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Work ID */}
+      {metadata.workId && (
+        <div className="text-xs text-gray-500 dark:text-gray-400 pt-2 border-t border-blue-200 dark:border-blue-800">
+          OpenAlex Work ID: {metadata.workId}
+        </div>
+      )}
+    </div>
+  );
+};
+
+// SciSpace Metadata Section Component
+const SciSpaceSection: React.FC<{ metadata: SciSpaceMetadata }> = ({ metadata }) => {
+  return (
+    <div className="bg-purple-50 dark:bg-purple-900/10 border border-purple-200 dark:border-purple-800 rounded-lg p-6 space-y-4">
+      <div className="flex items-center gap-2 mb-4">
+        <Award className="h-5 w-5 text-purple-600 dark:text-purple-400" />
+        <h4 className="text-lg font-semibold text-gray-900 dark:text-white">
+          SciSpace Metadata
+        </h4>
+      </div>
+
+      {/* Summary */}
+      {metadata.summary && (
+        <div>
+          <h5 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+            Summary
+          </h5>
+          <p className="text-sm text-gray-600 dark:text-gray-400 leading-relaxed">
+            {metadata.summary}
+          </p>
+        </div>
+      )}
+
+      {/* Key Findings */}
+      {metadata.keyFindings && metadata.keyFindings.length > 0 && (
+        <div>
+          <h5 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+            Key Findings
+          </h5>
+          <ul className="list-disc list-inside space-y-1 text-sm text-gray-600 dark:text-gray-400">
+            {metadata.keyFindings.map((finding, idx) => (
+              <li key={idx}>{finding}</li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {/* Methodology */}
+      {metadata.methodology && (
+        <div>
+          <h5 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+            Methodology
+          </h5>
+          <p className="text-sm text-gray-600 dark:text-gray-400 leading-relaxed">
+            {metadata.methodology}
+          </p>
+        </div>
+      )}
+
+      {/* Limitations */}
+      {metadata.limitations && metadata.limitations.length > 0 && (
+        <div>
+          <h5 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+            Limitations
+          </h5>
+          <ul className="list-disc list-inside space-y-1 text-sm text-gray-600 dark:text-gray-400">
+            {metadata.limitations.map((limitation, idx) => (
+              <li key={idx}>{limitation}</li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {/* Future Work */}
+      {metadata.futureWork && metadata.futureWork.length > 0 && (
+        <div>
+          <h5 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+            Future Work
+          </h5>
+          <ul className="list-disc list-inside space-y-1 text-sm text-gray-600 dark:text-gray-400">
+            {metadata.futureWork.map((work, idx) => (
+              <li key={idx}>{work}</li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {/* Full Text URL */}
+      {metadata.fullTextUrl && (
+        <div>
+          <a
+            href={metadata.fullTextUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-2 text-purple-600 dark:text-purple-400 hover:underline text-sm font-medium"
+          >
+            <Link2 className="h-4 w-4" />
+            View Full Text on SciSpace
+          </a>
+        </div>
+      )}
+
+      {/* SciSpace ID */}
+      {metadata.sciSpaceId && (
+        <div className="text-xs text-gray-500 dark:text-gray-400 pt-2 border-t border-purple-200 dark:border-purple-800">
+          SciSpace ID: {metadata.sciSpaceId}
+        </div>
+      )}
     </div>
   );
 };

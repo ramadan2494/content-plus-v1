@@ -4,10 +4,12 @@
 import { SearchResult } from '@/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { FileText, Copy, ExternalLink, Calendar, Users } from 'lucide-react';
+import { FileText, Copy, ExternalLink, Calendar, Users, Download, Quote } from 'lucide-react';
 import { formatDate, copyToClipboard } from '@/lib/utils';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
 import { DocumentDetailsModal } from './DocumentDetailsModal';
+import { AcademicBadges } from './AcademicBadges';
+import { CitationGenerator } from './CitationGenerator';
 import { useState } from 'react';
 
 interface SearchResultsProps {
@@ -18,6 +20,8 @@ interface SearchResultsProps {
 export const SearchResults: React.FC<SearchResultsProps> = ({ results, isLoading }) => {
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [selectedDocumentId, setSelectedDocumentId] = useState<string | null>(null);
+  const [showCitationId, setShowCitationId] = useState<string | null>(null);
+  const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
 
   const handleCopy = async (result: SearchResult) => {
     const citation = `${result.title}. ${result.authors.join(', ')}. ${formatDate(result.publicationDate)}. ${result.url || ''}`;
@@ -31,6 +35,23 @@ export const SearchResults: React.FC<SearchResultsProps> = ({ results, isLoading
 
   const handleViewDetails = (documentId: string) => {
     setSelectedDocumentId(documentId);
+  };
+
+  const toggleExpanded = (id: string) => {
+    const newExpanded = new Set(expandedIds);
+    if (newExpanded.has(id)) {
+      newExpanded.delete(id);
+    } else {
+      newExpanded.add(id);
+    }
+    setExpandedIds(newExpanded);
+  };
+
+  const getPdfUrl = (result: SearchResult): string | null => {
+    return result.pdfUrl || 
+           result.academicMetadata?.openAlex?.primaryLocation?.pdfUrl ||
+           result.academicMetadata?.openAlex?.locations?.[0]?.pdfUrl ||
+           null;
   };
 
   if (isLoading) {
@@ -57,92 +78,164 @@ export const SearchResults: React.FC<SearchResultsProps> = ({ results, isLoading
 
   return (
     <div className="space-y-4">
-      <div className="flex justify-between items-center">
-        <p className="text-sm text-muted-foreground">
+      <div className="flex justify-between items-center mb-6">
+        <p className="text-sm text-gray-600 dark:text-gray-400 font-medium">
           Found {results.length} {results.length === 1 ? 'result' : 'results'}
         </p>
       </div>
 
-      {results.map((result) => (
-        <Card 
-          key={result.id} 
-          className="hover:shadow-md transition-shadow cursor-pointer"
-          onClick={() => handleViewDetails(result.documentId)}
-        >
-          <CardHeader>
-            <div className="flex justify-between items-start gap-4">
-              <div className="flex-1">
-                <CardTitle className="text-xl mb-2 hover:text-primary">
-                  {result.title}
-                </CardTitle>
+      {results.map((result) => {
+        const isExpanded = expandedIds.has(result.id);
+        const pdfUrl = getPdfUrl(result);
+        
+        return (
+          <Card 
+            key={result.id} 
+            className="hover:shadow-lg transition-all duration-200 border-l-4 border-l-blue-500 dark:border-l-blue-600"
+          >
+            <CardHeader className="pb-4">
+              <div className="flex justify-between items-start gap-4">
+                <div className="flex-1 space-y-3">
+                  <CardTitle 
+                    className="text-xl font-bold text-gray-900 dark:text-white hover:text-blue-600 dark:hover:text-blue-400 cursor-pointer transition-colors"
+                    onClick={() => handleViewDetails(result.documentId)}
+                  >
+                    {result.title}
+                  </CardTitle>
 
-                <div className="flex flex-wrap gap-4 text-sm text-muted-foreground">
-                  <div className="flex items-center gap-1">
-                    <Users className="h-4 w-4" />
-                    <span>{result.authors.join(', ')}</span>
+                  {/* Authors and Metadata */}
+                  <div className="flex flex-wrap items-center gap-4 text-sm">
+                    {result.authors && result.authors.length > 0 && (
+                      <div className="flex items-center gap-1.5 text-gray-700 dark:text-gray-300">
+                        <Users className="h-4 w-4 text-gray-500 dark:text-gray-400" />
+                        <span className="font-medium">
+                          {result.authors.length > 3 
+                            ? `${result.authors.slice(0, 3).join(', ')}, et al.` 
+                            : result.authors.join(', ')}
+                        </span>
+                      </div>
+                    )}
+
+                    {(result.year || result.publicationDate) && (
+                      <div className="flex items-center gap-1.5 text-gray-700 dark:text-gray-300">
+                        <Calendar className="h-4 w-4 text-gray-500 dark:text-gray-400" />
+                        <span>{result.year || new Date(result.publicationDate).getFullYear()}</span>
+                      </div>
+                    )}
+
+                    {result.citations !== undefined && result.citations > 0 && (
+                      <div className="flex items-center gap-1.5 text-gray-700 dark:text-gray-300">
+                        <span className="font-semibold text-blue-600 dark:text-blue-400">
+                          {result.citations.toLocaleString()} citations
+                        </span>
+                      </div>
+                    )}
                   </div>
 
-                  <div className="flex items-center gap-1">
-                    <Calendar className="h-4 w-4" />
-                    <span>{formatDate(result.publicationDate)}</span>
-                  </div>
+                  {/* Academic Badges */}
+                  <AcademicBadges result={result} />
 
-                  {result.category && (
-                    <span className="bg-primary/10 text-primary px-2 py-1 rounded-full text-xs">
-                      {result.category}
-                    </span>
+                  {/* Keywords */}
+                  {result.keywords && result.keywords.length > 0 && (
+                    <div className="flex flex-wrap gap-2">
+                      {result.keywords.slice(0, 5).map((keyword, idx) => (
+                        <span
+                          key={idx}
+                          className="px-2 py-0.5 bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 rounded text-xs"
+                        >
+                          {keyword}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* Action Buttons */}
+                <div className="flex flex-col gap-2" onClick={(e) => e.stopPropagation()}>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => handleCopy(result)}
+                    title="Copy citation"
+                    className="h-9 w-9 p-0"
+                  >
+                    <Copy className={`h-4 w-4 ${copiedId === result.id ? 'text-green-600' : ''}`} />
+                  </Button>
+
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setShowCitationId(showCitationId === result.id ? null : result.id)}
+                    title="Show citation"
+                    className="h-9 w-9 p-0"
+                  >
+                    <Quote className="h-4 w-4" />
+                  </Button>
+
+                  {pdfUrl && (
+                    <Button variant="ghost" size="sm" asChild>
+                      <a href={pdfUrl} target="_blank" rel="noopener noreferrer" title="Download PDF">
+                        <Download className="h-4 w-4" />
+                      </a>
+                    </Button>
                   )}
 
-                  {result.database && (
-                    <span className="bg-secondary text-secondary-foreground px-2 py-1 rounded-full text-xs">
-                      {result.database}
-                    </span>
+                  {result.url && (
+                    <Button variant="ghost" size="sm" asChild>
+                      <a href={result.url} target="_blank" rel="noopener noreferrer" title="View online">
+                        <ExternalLink className="h-4 w-4" />
+                      </a>
+                    </Button>
                   )}
                 </div>
               </div>
+            </CardHeader>
 
-              <div className="flex gap-2" onClick={(e) => e.stopPropagation()}>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => handleCopy(result)}
-                  title="Copy citation"
-                >
-                  <Copy className={`h-4 w-4 ${copiedId === result.id ? 'text-green-500' : ''}`} />
-                </Button>
-
-                {result.url && (
-                  <Button variant="ghost" size="sm" asChild>
-                    <a href={result.url} target="_blank" rel="noopener noreferrer" title="Open">
-                      <ExternalLink className="h-4 w-4" />
-                    </a>
+            <CardContent className="space-y-4">
+              {/* Abstract/Content */}
+              <div className="space-y-2">
+                <CardDescription className="text-base leading-relaxed text-gray-700 dark:text-gray-300">
+                  {isExpanded 
+                    ? (result.abstract || result.content)
+                    : `${(result.abstract || result.content || '').substring(0, 250)}${(result.abstract || result.content || '').length > 250 ? '...' : ''}`
+                  }
+                </CardDescription>
+                {(result.abstract || result.content) && 
+                 (result.abstract || result.content || '').length > 250 && (
+                  <Button
+                    variant="link"
+                    size="sm"
+                    onClick={() => toggleExpanded(result.id)}
+                    className="h-auto p-0 text-blue-600 dark:text-blue-400"
+                  >
+                    {isExpanded ? 'Show less' : 'Show more'}
                   </Button>
                 )}
               </div>
-            </div>
-          </CardHeader>
 
-          <CardContent>
-            <CardDescription className="text-base leading-relaxed line-clamp-3">
-              {result.abstract || result.content}
-            </CardDescription>
-
-            {result.score && (
-              <div className="mt-4 flex items-center gap-2">
-                <span className="text-xs text-muted-foreground">
-                  Relevance: {(result.score * 100).toFixed(0)}%
-                </span>
-                <div className="flex-1 h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
-                  <div
-                    className="h-full bg-primary"
-                    style={{ width: `${result.score * 100}%` }}
-                  />
+              {/* Citation Generator */}
+              {showCitationId === result.id && (
+                <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
+                  <h4 className="text-sm font-semibold mb-3 text-gray-900 dark:text-white">
+                    Citation
+                  </h4>
+                  <CitationGenerator result={result} />
                 </div>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      ))}
+              )}
+
+              {/* View Details Button */}
+              <Button
+                variant="outline"
+                className="w-full mt-4"
+                onClick={() => handleViewDetails(result.documentId)}
+              >
+                <FileText className="h-4 w-4 mr-2" />
+                View Full Details & Metadata
+              </Button>
+            </CardContent>
+          </Card>
+        );
+      })}
 
       {/* Document Details Modal */}
       {selectedDocumentId && (

@@ -1,6 +1,6 @@
 // src/store/search.store.ts
 import { create } from 'zustand';
-import { SearchState, SearchType, SearchFilters } from '@/types';
+import { SearchState, SearchType, SearchFilters, SearchResponse } from '@/types';
 import { SearchService } from '@/services';
 import { SEARCH_CONFIG } from '@/config/constants';
 
@@ -77,20 +77,26 @@ export const useSearchStore = create<SearchState>((set, get) => ({
         }
       } else {
         // Standard search returns results
-        const standardResponse = response as {
-          results: unknown[];
-          total: number;
-          hasMore: boolean;
-        };
+        const standardResponse = response as SearchResponse;
+
+        console.log('Standard Search Response:', standardResponse);
+        console.log('Results:', standardResponse.results);
+        console.log('Results length:', standardResponse.results?.length);
+
+        const resultsArray = Array.isArray(standardResponse.results) 
+          ? standardResponse.results 
+          : [];
 
         set({
-          results: standardResponse.results,
-          total: standardResponse.total,
-          hasMore: standardResponse.hasMore,
+          results: resultsArray,
+          total: standardResponse.total || 0,
+          hasMore: standardResponse.hasMore || false,
           ragResult: null,
           isLoading: false,
           error: null,
         });
+
+        console.log('State set with results:', resultsArray.length);
       }
     } catch (error) {
       const errorMessage =
