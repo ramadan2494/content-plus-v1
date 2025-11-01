@@ -7,3 +7,4 @@ export { SearchFilters } from './SearchFilters';
 export { AcademicBadges } from './AcademicBadges';
 export { CitationGenerator } from './CitationGenerator';
 export { DocumentDetailsModal } from './DocumentDetailsModal';
+export { AIAssistant } from './AIAssistant';

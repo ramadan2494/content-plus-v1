@@ -57,13 +57,35 @@ export const useSearchStore = create<SearchState>((set, get) => ({
         // Handle the new API response format
         if (ragResponse.instances && ragResponse.instances.length > 0) {
           const firstInstance = ragResponse.instances[0];
+          
+          // Extract papers from sources if available
+          const papers = firstInstance.sources?.map((source: any) => ({
+            id: source.documentId || source.id || Math.random().toString(),
+            documentId: source.documentId || source.id || '',
+            title: source.title || source.text?.substring(0, 100) || 'Untitled',
+            authors: source.authors || [],
+            abstract: source.excerpt || source.text || '',
+            content: source.text || source.excerpt || '',
+            category: '',
+            database: '',
+            publicationDate: source.publicationDate || '',
+            citations: source.citations,
+            url: source.url,
+            score: source.score || source.relevanceScore || 0,
+            year: source.year,
+            venue: source.venue,
+            doi: source.doi,
+            academicMetadata: source.academicMetadata,
+          })) || [];
+          
           set({
             ragResult: {
               answer: firstInstance.answer,
               confidence: firstInstance.confidence,
               sources: firstInstance.sources,
             },
-            results: [],
+            results: papers, // Include papers from RAG sources
+            total: papers.length,
             isLoading: false,
             error: null,
           });
