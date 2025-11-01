@@ -3,7 +3,6 @@
 
 import { useState, useEffect } from 'react';
 import { useSearchStore } from '@/store';
-import { SearchService } from '@/services';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -12,8 +11,8 @@ import { Calendar, TrendingUp, Database, Filter, Lock, Unlock } from 'lucide-rea
 
 export const SearchFilters: React.FC = () => {
   const { filters, setFilters } = useSearchStore();
-  const [categories, setCategories] = useState<string[]>([]);
-  const [databases, setDatabases] = useState<string[]>([]);
+  const [categories] = useState<string[]>([]);
+  const [databases] = useState<string[]>([]);
   const [selectedCategories, setSelectedCategories] = useState<string[]>(
     filters.categories || []
   );
@@ -31,12 +30,13 @@ export const SearchFilters: React.FC = () => {
   useEffect(() => {
     const loadFilters = async () => {
       try {
-        const [cats, dbs] = await Promise.all([
-          SearchService.getCategories?.() || Promise.resolve([]),
-          SearchService.getDatabases?.() || Promise.resolve([]),
-        ]);
-        setCategories(cats);
-        setDatabases(dbs);
+        // These methods don't exist yet, so we'll skip loading them
+        // const [cats, dbs] = await Promise.all([
+        //   SearchService.getCategories?.() || Promise.resolve([]),
+        //   SearchService.getDatabases?.() || Promise.resolve([]),
+        // ]);
+        // setCategories(cats);
+        // setDatabases(dbs);
       } catch (error) {
         console.error('Error loading filters:', error);
       }

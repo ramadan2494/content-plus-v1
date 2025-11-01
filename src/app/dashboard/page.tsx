@@ -20,7 +20,7 @@ export default function DashboardPage() {
             <div>
               <h1 className="text-3xl font-bold mb-2">Welcome back, {user?.username}!</h1>
               <p className="text-muted-foreground">
-                Here's an overview of your search activity
+                Here&apos;s an overview of your search activity
               </p>
             </div>
 

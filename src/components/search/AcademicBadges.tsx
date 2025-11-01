@@ -1,11 +1,10 @@
 // src/components/search/AcademicBadges.tsx
 'use client';
 
-import { SearchResult, AcademicMetadata } from '@/types';
+import { SearchResult } from '@/types';
 import { 
   Award, 
   FileText, 
-  Globe, 
   ExternalLink, 
   BookOpen,
   TrendingUp,

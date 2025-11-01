@@ -3,7 +3,7 @@
 
 import { RAGResult } from '@/types';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Sparkles, TrendingUp, ExternalLink, BookOpen, Calendar, Users, FileText, Award } from 'lucide-react';
+import { Sparkles, TrendingUp, ExternalLink, BookOpen, Calendar, Users, FileText } from 'lucide-react';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
 import { DocumentDetailsModal } from './DocumentDetailsModal';
 import { AcademicBadges } from './AcademicBadges';

@@ -18,16 +18,6 @@ export const CitationGenerator: React.FC<CitationGeneratorProps> = ({
   const [copied, setCopied] = useState(false);
   const [currentFormat, setCurrentFormat] = useState(format);
 
-  const formatDate = (dateString: string): string => {
-    if (!dateString) return '';
-    const date = new Date(dateString);
-    return date.toLocaleDateString('en-US', { 
-      year: 'numeric', 
-      month: 'long', 
-      day: 'numeric' 
-    });
-  };
-
   const generateCitation = (fmt: string): string => {
     const authors = result.authors || [];
     const title = result.title || 'Untitled';

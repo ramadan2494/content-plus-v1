@@ -6,7 +6,6 @@ import {
   SearchResponse,
   RAGResponse,
   SearchResult,
-  RAGResult,
 } from '@/types';
 
 /**
@@ -39,6 +38,7 @@ export class SearchService {
     request: SearchRequest
   ): Promise<SearchResponse> {
     try {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const response = await apiClient.post<any>(
         `${this.SEARCH_BASE}/${searchType}`,
         {
@@ -51,8 +51,6 @@ export class SearchService {
         }
       );
 
-      console.log('Standard Search API Response:', response?.data);
-
       const page = request.page || 1;
       const pageSize = request.pageSize || 10;
 
@@ -62,7 +60,6 @@ export class SearchService {
 
       // Check if response and response.data exist
       if (!response || !response.data) {
-        console.warn('Empty or invalid API response:', response);
         return {
           results: [],
           total: 0,
@@ -99,7 +96,6 @@ export class SearchService {
       }
       // Format 6: Empty response or unexpected format
       else {
-        console.warn('Unexpected API response format:', response.data);
         results = [];
         total = 0;
       }
@@ -134,7 +130,6 @@ export class SearchService {
       });
 
       if (!response || !response.data) {
-        console.warn('Empty or invalid RAG API response:', response);
         return {
           totalRecords: 0,
           instances: [],
@@ -155,17 +150,16 @@ export class SearchService {
   /**
    * Get document details by ID using filters endpoint
    */
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   static async getDocumentById(documentId: string): Promise<any> {
     try {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const response = await apiClient.post<any>(`${this.SEARCH_BASE}/filters`, {
         field: 'documentId',
         value: documentId,
       });
 
-      console.log('Document API Response:', response?.data);
-
       if (!response || !response.data) {
-        console.warn('Empty or invalid document API response:', response);
         return {};
       }
 

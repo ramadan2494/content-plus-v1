@@ -75,8 +75,9 @@ export class AuthService {
    * Register new user
    */
   static async register(data: RegisterRequest): Promise<AuthResponse> {
-    const { confirmPassword, ...registerData } = data;
+    const { ...registerData } = data;
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const response = await apiClient.post<any>(
       `${this.AUTH_BASE}/register`,
       registerData

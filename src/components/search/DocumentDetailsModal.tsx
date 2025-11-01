@@ -5,7 +5,7 @@ import { useEffect, useState } from 'react';
 import { SearchService } from '@/services';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
 import { formatDate } from '@/lib/utils';
-import { ExternalLink, Copy, BookOpen, Calendar, Database, Globe, FileText, Tag, TrendingUp, Building2, Link2, Users, Award, BarChart3, Download, ExternalLinkIcon } from 'lucide-react';
+import { ExternalLink, Copy, BookOpen, Calendar, Database, Globe, FileText, Tag, TrendingUp, Building2, Link2, Users, Award, BarChart3, Download } from 'lucide-react';
 import { AcademicMetadata, OpenAlexMetadata, SciSpaceMetadata } from '@/types';
 import { CitationGenerator } from './CitationGenerator';
 

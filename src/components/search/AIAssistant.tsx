@@ -2,11 +2,10 @@
 'use client';
 
 import { useState } from 'react';
-import { Sparkles, Send, Settings, Bot, MessageCircle, Zap, BookOpen, ThumbsUp, ThumbsDown, FileStack, Mic, Search, Plus } from 'lucide-react';
+import { Sparkles, Settings, Bot, MessageCircle, ThumbsUp, ThumbsDown, FileStack, Mic } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { RAGResult, SearchResult } from '@/types';
-import { RAGResults } from './RAGResults';
 import { SearchResults } from './SearchResults';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
 
